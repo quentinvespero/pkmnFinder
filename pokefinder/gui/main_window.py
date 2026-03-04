@@ -13,6 +13,8 @@ Wire-up:
 
 from __future__ import annotations
 
+import logging
+
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QMainWindow,
@@ -27,6 +29,9 @@ from pokefinder.gui.instance_grid import InstanceGrid
 from pokefinder.hunt.config import HuntConfig
 from pokefinder.hunt.coordinator import HuntCoordinator
 from pokefinder.pokemon.structs import Pokemon
+
+
+log = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
@@ -68,6 +73,16 @@ class MainWindow(QMainWindow):
 
     def _on_hunt_started(self, config: HuntConfig) -> None:
         """Called when the user clicks Start."""
+        log.info(
+            "Hunt started: rom=%s species=%d(%s) method=%s instances=%d shiny_only=%s",
+            config.rom_path.name,
+            config.target_species_id,
+            config.target_species_name,
+            config.method.value,
+            config.num_instances,
+            config.shiny_only,
+        )
+
         # Tear down any existing coordinator
         if self._coordinator is not None:
             self._coordinator.stop()
@@ -81,6 +96,7 @@ class MainWindow(QMainWindow):
             on_stats_update=self._on_stats_update,
             on_found=self._on_found,
             on_error=self._on_error,
+            on_frame_update=self._on_frame_update,
         )
         self._coordinator.start()
 
@@ -96,6 +112,9 @@ class MainWindow(QMainWindow):
 
     def _on_stats_update(self, instance_id: int, count: int, rate: float, state: str) -> None:
         self._grid.update_stats(instance_id, count, rate, state)
+
+    def _on_frame_update(self, instance_id: int, data: bytes) -> None:
+        self._grid.update_frame(instance_id, data)
 
     def _on_found(self, instance_id: int, pokemon: Pokemon) -> None:
         """Handle a found event: update the grid and show a dialog."""
@@ -117,6 +136,7 @@ class MainWindow(QMainWindow):
 
     def _on_error(self, instance_id: int, message: str) -> None:
         """Handle an instance error."""
+        log.error("Instance #%d error: %s", instance_id + 1, message)
         QMessageBox.critical(
             self,
             f"Error — Instance #{instance_id + 1}",

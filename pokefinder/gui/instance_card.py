@@ -11,6 +11,7 @@ Displays:
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import QFrame, QGridLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 
@@ -23,8 +24,7 @@ class InstanceCard(QWidget):
         self._setup_ui()
 
     def _setup_ui(self) -> None:
-        self.setMinimumWidth(180)
-        self.setMaximumWidth(260)
+        self.setMinimumWidth(240)
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         # Use a framed box
@@ -36,9 +36,23 @@ class InstanceCard(QWidget):
         frame.setFrameShadow(QFrame.Shadow.Raised)
         outer.addWidget(frame)
 
-        layout = QGridLayout(frame)
-        layout.setContentsMargins(8, 8, 8, 8)
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.setSpacing(0)
+
+        # GBA screen preview (240×160 native, shown at 240×160)
+        self._screen_label = QLabel()
+        self._screen_label.setFixedSize(240, 160)
+        self._screen_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._screen_label.setStyleSheet("background-color: #111;")
+        frame_layout.addWidget(self._screen_label)
+
+        # Stats grid below the screen
+        stats_widget = QFrame()
+        layout = QGridLayout(stats_widget)
+        layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
+        frame_layout.addWidget(stats_widget)
 
         # Title row
         title = QLabel(f"Instance #{self.instance_id + 1}")
@@ -95,6 +109,13 @@ class InstanceCard(QWidget):
         }
         color = color_map.get(state, "#ccc")
         self._state_label.setStyleSheet(f"color: {color}; font-weight: bold;")
+
+    def update_screen(self, data: bytes) -> None:
+        """Display a raw 240×160 XRGB8888 framebuffer snapshot."""
+        if len(data) < 240 * 160 * 4:
+            return
+        img = QImage(data, 240, 160, 240 * 4, QImage.Format.Format_RGB32)
+        self._screen_label.setPixmap(QPixmap.fromImage(img))
 
     def update_last_pokemon(self, name: str, is_shiny: bool = False) -> None:
         """Update the last-seen Pokemon name."""

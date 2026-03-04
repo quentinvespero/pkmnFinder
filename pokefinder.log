@@ -1,0 +1,31 @@
+2026-03-04 22:57:41,138 [INFO] main: Starting Pokemon Finder
+2026-03-04 22:57:41,437 [INFO] main: GUI ready — entering event loop
+2026-03-04 22:57:49,905 [INFO] pokefinder.gui.main_window: Hunt started: rom=pkmn_fire_red.gba species=1(Bulbasaur) method=wild instances=4 shiny_only=True
+2026-03-04 22:57:49,915 [INFO] pokefinder.hunt.instance: Instance #0 started in thread Dummy-1
+2026-03-04 22:57:49,915 [INFO] pokefinder.hunt.instance: Instance #1 started in thread Dummy-2
+2026-03-04 22:57:49,915 [DEBUG] pokefinder.hunt.instance: Instance #0: creating emulator in worker thread (fallback)
+2026-03-04 22:57:49,915 [DEBUG] pokefinder.hunt.instance: Instance #1: creating emulator in worker thread (fallback)
+2026-03-04 22:57:49,916 [ERROR] pokefinder.hunt.instance: Instance #0: mgba not installed: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:49,916 [ERROR] pokefinder.hunt.instance: Instance #1: mgba not installed: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:49,916 [INFO] pokefinder.hunt.instance: Instance #2 started in thread Dummy-3
+2026-03-04 22:57:49,916 [INFO] pokefinder.hunt.instance: Instance #0 exiting
+2026-03-04 22:57:49,916 [INFO] pokefinder.hunt.instance: Instance #1 exiting
+2026-03-04 22:57:49,916 [INFO] pokefinder.hunt.instance: Instance #3 started in thread Dummy-4
+2026-03-04 22:57:49,917 [DEBUG] pokefinder.hunt.instance: Instance #2: creating emulator in worker thread (fallback)
+2026-03-04 22:57:49,917 [DEBUG] pokefinder.hunt.instance: Instance #3: creating emulator in worker thread (fallback)
+2026-03-04 22:57:49,917 [ERROR] pokefinder.hunt.instance: Instance #2: mgba not installed: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:49,917 [ERROR] pokefinder.hunt.instance: Instance #3: mgba not installed: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:49,917 [INFO] pokefinder.hunt.instance: Instance #2 exiting
+2026-03-04 22:57:49,917 [INFO] pokefinder.hunt.instance: Instance #3 exiting
+2026-03-04 22:57:49,926 [ERROR] pokefinder.gui.main_window: Instance #1 error: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:50,038 [ERROR] pokefinder.gui.main_window: Instance #2 error: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:50,070 [ERROR] pokefinder.gui.main_window: Instance #3 error: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.
+2026-03-04 22:57:50,107 [ERROR] pokefinder.gui.main_window: Instance #4 error: The 'mgba' Python package is not installed.
+See README.md for platform-specific installation instructions.

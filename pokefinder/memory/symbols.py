@@ -16,8 +16,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-# Matches: "08000000 T _start" or "0200c5e8 D gPlayerParty"
-_SYM_PATTERN = re.compile(r"^([0-9a-fA-F]+)\s+([A-Za-z])\s+(\S+)$")
+# Matches 3-column "08000000 T _start" and 4-column "0200c5e8 g 00000001 gPlayerParty"
+# The optional middle hex field is the symbol size (present in nm --print-size output).
+_SYM_PATTERN = re.compile(r"^([0-9a-fA-F]+)\s+([A-Za-z])\s+(?:[0-9a-fA-F]+\s+)?(\S+)$")
 
 
 class SymbolTable:

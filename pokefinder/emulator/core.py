@@ -12,12 +12,19 @@ turns out not to be the case on your platform, switch to multiprocessing
 
 from __future__ import annotations
 
-import os
+import logging
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+# mgba's mCoreFind is not thread-safe: concurrent calls corrupt the mCore
+# struct (null function pointers).  Serialize all emulator init calls.
+_init_lock = threading.Lock()
+
 if TYPE_CHECKING:
     pass
+
+log = logging.getLogger(__name__)
 
 try:
     import mgba.core
@@ -62,20 +69,45 @@ class LibmgbaEmulator:
         self._rom_path = Path(rom_path)
         self._save_path = Path(save_path) if save_path else None
 
-        # Silence mGBA's default stderr logging.
-        mgba.log.silence()
+        with _init_lock:
+            log.debug("mgba: silencing log")
+            # Silence mGBA's default stderr logging.
+            mgba.log.silence()
 
-        self._core: mgba.core.Core = mgba.core.load_path(str(self._rom_path))
-        if self._core is None:
-            raise RomLoadError(f"mGBA could not load ROM: {self._rom_path}")
+            _lib = mgba.core.lib
+            _ffi = mgba.core.ffi
 
-        # Allocate a minimal 1×1 framebuffer — we don't need video output.
-        self._screen = mgba.image.Image(1, 1)
+            log.debug("mgba: calling mCoreFind()")
+            native = _lib.mCoreFind(str(self._rom_path).encode("UTF-8"))
+            if native == _ffi.NULL:
+                raise RomLoadError(f"mGBA could not identify ROM type: {self._rom_path}")
+            log.debug("mgba: mCoreFind() OK — calling core.init()")
+
+            core = _ffi.gc(native, native.deinit)
+            if not bool(core.init(core)):
+                raise RomLoadError(f"mGBA core.init() failed: {self._rom_path}")
+            log.debug("mgba: core.init() OK — calling mCoreInitConfig()")
+
+            _lib.mCoreInitConfig(core, _ffi.NULL)
+            log.debug("mgba: mCoreInitConfig() OK — calling load_file()")
+
+            self._core = mgba.core.Core._detect(core)
+            if not self._core.load_file(str(self._rom_path)):
+                raise RomLoadError(f"mGBA could not load ROM: {self._rom_path}")
+            log.debug("mgba: load_file() OK")
+
+        # Allocate a GBA-sized framebuffer (240×160) for headless operation.
+        log.debug("mgba: creating 240×160 framebuffer")
+        self._screen = mgba.image.Image(240, 160)
+        log.debug("mgba: setting video buffer")
         self._core.set_video_buffer(self._screen)
 
+        log.debug("mgba: calling reset()")
         self._core.reset()
+        log.debug("mgba: reset OK")
 
         if self._save_path and self._save_path.exists():
+            log.debug("mgba: loading save %s", self._save_path)
             self.load_save(self._save_path)
 
     # ------------------------------------------------------------------
@@ -103,11 +135,11 @@ class LibmgbaEmulator:
 
         Calling with ``keys=0`` releases all buttons.
         """
-        self._core.set_keys(keys)
+        self._core.set_keys(raw=keys)
 
     def clear_inputs(self) -> None:
         """Release all buttons."""
-        self._core.set_keys(0)
+        self._core.set_keys(raw=0)
 
     # ------------------------------------------------------------------
     # Memory access
@@ -140,21 +172,40 @@ class LibmgbaEmulator:
         """Persist the current emulator state to *path* (.ss1 file)."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        state = self._core.save_state_buffer()
-        path.write_bytes(state)
+        state = self._core.save_raw_state()
+        if state is None:
+            raise RuntimeError(f"mGBA failed to save state to {path}")
+        path.write_bytes(bytes(state))
 
     def load_state(self, path: Path | str) -> None:
         """Restore emulator state from *path*."""
         path = Path(path)
-        data = path.read_bytes()
-        self._core.load_state_buffer(data)
+        data = bytearray(path.read_bytes())
+        self._core.load_raw_state(data)
 
     def load_save(self, path: Path | str) -> None:
         """Load a battery-backed save (.sav) file."""
+        import mgba.vfs
         path = Path(path)
-        # mGBA stores save data in the core's save buffer; load via VFile.
-        # Simplest approach: pass the path and let mGBA handle it.
-        self._core.load_raw_save(str(path))
+        vf = mgba.vfs.open_path(str(path), "r")
+        if vf is None:
+            raise RuntimeError(f"mGBA could not open save file: {path}")
+        self._core.load_save(vf)
+
+    # ------------------------------------------------------------------
+    # ROM info
+    # ------------------------------------------------------------------
+
+    def get_screen_bytes(self) -> bytes:
+        """Return the current framebuffer as raw bytes (240×160, 4 bytes/pixel, XRGB8888).
+
+        Safe to call right after run_frame() in the same thread.
+        Returns a zero-filled buffer on error.
+        """
+        try:
+            return bytes(mgba.core.ffi.buffer(self._screen.buffer, 240 * 160 * 4))
+        except Exception:
+            return bytes(240 * 160 * 4)
 
     # ------------------------------------------------------------------
     # ROM info
@@ -168,4 +219,8 @@ class LibmgbaEmulator:
     @property
     def rom_code(self) -> str:
         """4-char game code (e.g. 'BPEE' for Emerald)."""
-        return self._core.game_code
+        code = self._core.game_code
+        # mGBA prefixes the code with the platform identifier 'AGB-'
+        if code.startswith("AGB-"):
+            return code[4:]
+        return code

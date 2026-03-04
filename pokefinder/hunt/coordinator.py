@@ -17,6 +17,7 @@ Threading model:
 
 from __future__ import annotations
 
+import logging
 import threading
 from typing import Callable
 
@@ -25,6 +26,8 @@ from PyQt6.QtCore import QThreadPool
 from pokefinder.hunt.config import HuntConfig
 from pokefinder.hunt.instance import HuntInstance
 from pokefinder.pokemon.structs import Pokemon
+
+log = logging.getLogger(__name__)
 
 
 class HuntCoordinator:
@@ -51,11 +54,13 @@ class HuntCoordinator:
         on_stats_update: Callable[[int, int, float, str], None] | None = None,
         on_found: Callable[[int, Pokemon], None] | None = None,
         on_error: Callable[[int, str], None] | None = None,
+        on_frame_update: Callable[[int, bytes], None] | None = None,
     ) -> None:
         self._config = config
         self._on_stats = on_stats_update
         self._on_found = on_found
         self._on_error = on_error
+        self._on_frame = on_frame_update
 
         self._stop_event = threading.Event()
         self._pool = QThreadPool.globalInstance()
@@ -80,11 +85,13 @@ class HuntCoordinator:
                 instance_id=i,
                 config=self._config,
                 stop_event=self._stop_event,
+                emulator=None,  # created in worker thread to avoid blocking the main event loop
             )
             # Wire signals
             instance.signals.stats_updated.connect(self._handle_stats)
             instance.signals.found.connect(self._handle_found)
             instance.signals.error.connect(self._handle_error)
+            instance.signals.frame_updated.connect(self._handle_frame)
 
             self._instances.append(instance)
             self._pool.start(instance)
@@ -121,3 +128,7 @@ class HuntCoordinator:
     def _handle_error(self, instance_id: int, message: str) -> None:
         if self._on_error:
             self._on_error(instance_id, message)
+
+    def _handle_frame(self, instance_id: int, data: bytes) -> None:
+        if self._on_frame:
+            self._on_frame(instance_id, data)

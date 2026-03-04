@@ -88,3 +88,8 @@ class InstanceGrid(QWidget):
         card = self._cards.get(instance_id)
         if card:
             card.set_found(pokemon_str)
+
+    def update_frame(self, instance_id: int, data: bytes) -> None:
+        card = self._cards.get(instance_id)
+        if card:
+            card.update_screen(data)
